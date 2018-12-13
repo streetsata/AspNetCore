@@ -16,6 +16,9 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
     /// </summary>
     public class CorsMiddleware
     {
+        // Property key is used by MVC filters to check if CORS middleware has run
+        private const string CorsMiddlewareInvokedKey = "__CorsMiddlewareInvoked";
+
         private readonly Func<object, Task> OnResponseStartingDelegate = OnResponseStarting;
         private readonly RequestDelegate _next;
         private readonly CorsPolicy _policy;
@@ -131,6 +134,9 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
             // 2. If there is an endpoint with IEnableCorsAttribute that has a policy name then
             //    fetch policy by name, prioritizing it above policy on middleware
             // 3. If there is no policy on middleware then use name on middleware
+
+            // Flag to indicate to other systems, e.g. MVC, that CORS middleware was run for this request
+            context.Items[CorsMiddlewareInvokedKey] = true;
 
             var endpoint = context.GetEndpoint();
 

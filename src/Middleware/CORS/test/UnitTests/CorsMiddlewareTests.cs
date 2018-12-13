@@ -753,5 +753,30 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
                 o => o.GetPolicyAsync(It.IsAny<HttpContext>(), It.IsAny<string>()),
                 Times.Never);
         }
+
+        [Fact]
+        public async Task Invoke_InvokeFlagSet()
+        {
+            // Arrange
+            var corsService = Mock.Of<ICorsService>();
+            var mockProvider = Mock.Of<ICorsPolicyProvider>();
+            var loggerFactory = NullLoggerFactory.Instance;
+
+            var middleware = new CorsMiddleware(
+                Mock.Of<RequestDelegate>(),
+                corsService,
+                loggerFactory,
+                "DefaultPolicyName");
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.SetEndpoint(new Endpoint(c => Task.CompletedTask, new EndpointMetadataCollection(new EnableCorsAttribute("MetadataPolicyName"), new DisableCorsAttribute()), "Test endpoint"));
+            httpContext.Request.Headers.Add(CorsConstants.Origin, new[] { "http://example.com" });
+
+            // Act
+            await middleware.Invoke(httpContext, mockProvider);
+
+            // Assert
+            Assert.Contains(httpContext.Items, item => string.Equals(item.Key as string, "__CorsMiddlewareInvoked"));
+        }
     }
 }

@@ -12,33 +12,36 @@ namespace SampleDestination
     {
         public static void Main(string[] args)
         {
-            Type startupType = null;
-
-            var startup = Environment.GetEnvironmentVariable("CORS_STARTUP");
-            switch (startup)
-            {
-                case "Startup":
-                    startupType = typeof(Startup);
-                    break;
-                case "StartupWithoutEndpointRouting":
-                    startupType = typeof(StartupWithoutEndpointRouting);
-                    break;
-            }
-
-            if (startupType == null)
-            {
-                throw new InvalidOperationException("Could not resolve the startup type. Unexpected CORS_STARTUP environment variable.");
-            }
-
             var host = new WebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://+:9000")
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .ConfigureLogging(factory => factory.AddConsole())
-                .UseStartup(startupType)
+                .UseStartup(GetStartupType())
                 .Build();
 
             host.Run();
+        }
+
+        private static Type GetStartupType()
+        {
+            var startup = Environment.GetEnvironmentVariable("CORS_STARTUP");
+            if (startup == null)
+            {
+                return typeof(Startup);
+            }
+            else
+            {
+                switch (startup)
+                {
+                    case "Startup":
+                        return typeof(Startup);
+                    case "StartupWithoutEndpointRouting":
+                        return typeof(StartupWithoutEndpointRouting);
+                }
+            }
+
+            throw new InvalidOperationException("Could not resolve the startup type. Unexpected CORS_STARTUP environment variable.");
         }
     }
 }
