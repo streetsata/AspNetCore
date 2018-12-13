@@ -131,9 +131,10 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
             // CORS policy resolution rules:
             //
             // 1. If there is an endpoint with IDisableCorsAttribute then CORS is not run
-            // 2. If there is an endpoint with IEnableCorsAttribute that has a policy name then
+            // 2. If there is an endpoint with ICorsPolicyMetadata then use its policy and name
+            // 3. If there is an endpoint with IEnableCorsAttribute that has a policy name then
             //    fetch policy by name, prioritizing it above policy on middleware
-            // 3. If there is no policy on middleware then use name on middleware
+            // 4. If there is no policy on middleware then use name on middleware
 
             // Flag to indicate to other systems, e.g. MVC, that CORS middleware was run for this request
             context.Items[CorsMiddlewareInvokedKey] = true;
@@ -142,7 +143,7 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
 
             // Get the most significant CORS metadata for the endpoint
             // For backwards compatibility reasons this is then downcast to Enable/Disable metadata
-            var corsMetadata = endpoint?.Metadata.GetMetadata<ICorsAttribute>();
+            var corsMetadata = endpoint?.Metadata.GetMetadata<ICorsMetadata>();
             if (corsMetadata is IDisableCorsAttribute)
             {
                 await _next(context);
@@ -151,7 +152,12 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
 
             var corsPolicy = _policy;
             var policyName = _corsPolicyName;
-            if (corsMetadata is IEnableCorsAttribute enableCorsAttribute &&
+            if (corsMetadata is ICorsPolicyMetadata corsPolicyMetadata)
+            {
+                policyName = corsPolicyMetadata.PolicyName;
+                corsPolicy = corsPolicyMetadata.Policy;
+            }
+            else if (corsMetadata is IEnableCorsAttribute enableCorsAttribute &&
                 enableCorsAttribute.PolicyName != null)
             {
                 // If a policy name has been provided on the endpoint metadata then prioritizing it above the static middleware policy

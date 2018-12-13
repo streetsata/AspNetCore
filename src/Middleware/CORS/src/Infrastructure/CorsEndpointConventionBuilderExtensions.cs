@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.AspNetCore.Builder
@@ -27,7 +28,36 @@ namespace Microsoft.AspNetCore.Builder
 
             builder.Apply(endpointBuilder =>
             {
-                endpointBuilder.Metadata.Add(new EnableCorsAttribute(policyName));
+                endpointBuilder.Metadata.Add(new CorsPolicyMetadata(policyName));
+            });
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds the specified CORS policy to the endpoint(s).
+        /// </summary>
+        /// <param name="builder">The endpoint convention builder.</param>
+        /// <param name="configurePolicy">A delegate which can use a policy builder to build a policy.</param>
+        /// <returns>The original convention builder parameter.</returns>
+        public static IEndpointConventionBuilder WithCorsPolicy(this IEndpointConventionBuilder builder, Action<CorsPolicyBuilder> configurePolicy)
+        {
+            if (builder == null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            if (configurePolicy == null)
+            {
+                throw new ArgumentNullException(nameof(configurePolicy));
+            }
+
+            var policyBuilder = new CorsPolicyBuilder();
+            configurePolicy(policyBuilder);
+            var policy = policyBuilder.Build();
+
+            builder.Apply(endpointBuilder =>
+            {
+                endpointBuilder.Metadata.Add(new CorsPolicyMetadata(policy));
             });
             return builder;
         }

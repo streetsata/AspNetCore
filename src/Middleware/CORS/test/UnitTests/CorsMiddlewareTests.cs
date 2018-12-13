@@ -658,6 +658,44 @@ namespace Microsoft.AspNetCore.Cors.Infrastructure
         }
 
         [Fact]
+        public async Task Invoke_HasEndpointWithCorsPolicyMetadata_MiddlewareHasPolicy_RunsCorsWithPolicyName()
+        {
+            // Arrange
+            var defaultPolicy = new CorsPolicyBuilder().Build();
+            var metadataPolicy = new CorsPolicyBuilder().Build();
+            var mockCorsService = new Mock<ICorsService>();
+            var mockProvider = new Mock<ICorsPolicyProvider>();
+            var loggerFactory = NullLoggerFactory.Instance;
+            mockProvider.Setup(o => o.GetPolicyAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))
+                .Returns(Task.FromResult<CorsPolicy>(null))
+                .Verifiable();
+            mockCorsService.Setup(o => o.EvaluatePolicy(It.IsAny<HttpContext>(), It.IsAny<CorsPolicy>()))
+                .Returns(new CorsResult())
+                .Verifiable();
+
+            var middleware = new CorsMiddleware(
+                Mock.Of<RequestDelegate>(),
+                mockCorsService.Object,
+                defaultPolicy,
+                loggerFactory);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.SetEndpoint(new Endpoint(c => Task.CompletedTask, new EndpointMetadataCollection(new CorsPolicyMetadata(metadataPolicy)), "Test endpoint"));
+            httpContext.Request.Headers.Add(CorsConstants.Origin, new[] { "http://example.com" });
+
+            // Act
+            await middleware.Invoke(httpContext, mockProvider.Object);
+
+            // Assert
+            mockProvider.Verify(
+                o => o.GetPolicyAsync(It.IsAny<HttpContext>(), It.IsAny<string>()),
+                Times.Never);
+            mockCorsService.Verify(
+                o => o.EvaluatePolicy(It.IsAny<HttpContext>(), metadataPolicy),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task Invoke_HasEndpointWithEnableMetadataWithNoName_RunsCorsWithStaticPolicy()
         {
             // Arrange
